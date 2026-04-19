@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>O-JEPA · 免标定与认知振荡的轻量级端到端自动驾驶联合嵌入预测架构</title>
+<meta name="description" content="O-JEPA: A Lightweight Oscillating Joint-Embedding Predictive Architecture for Calibration-Free End-to-End Autonomous Driving." />
+<meta name="theme-color" content="#0f172a" />
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230f172a'/%3E%3Ctext x='50%25' y='55%25' font-family='Georgia,serif' font-size='16' font-weight='700' fill='%23e2e8f0' text-anchor='middle' dominant-baseline='middle'%3EO%3C/text%3E%3C/svg%3E" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Noto+Serif+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter', 'ui-sans-serif', 'system-ui'],
+          serif: ['"Source Serif 4"', '"Noto Serif SC"', 'Georgia', 'serif'],
+          mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+        },
+        colors: {
+          ink: { 900: '#0b1220', 800: '#0f172a', 700: '#1e293b', 600: '#334155', 500: '#475569', 400: '#64748b' },
+          paper: { DEFAULT: '#fbfaf7', 50: '#fdfcf9', 100: '#f4f2ec' },
+          accent: { DEFAULT: '#1d4ed8', soft: '#dbeafe', dark: '#1e3a8a' },
+          warm: { DEFAULT: '#b45309', soft: '#fef3c7' },
+        },
+        maxWidth: { reading: '760px' },
+      },
+    },
+  };
+</script>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+  onload="renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'\\\\[',right:'\\\\]',display:true},{left:'$',right:'$',display:false},{left:'\\\\(',right:'\\\\)',display:false}],throwOnError:false});"></script>
+
+<link rel="stylesheet" href="assets/style.css" />
+</head>
+
+<body class="bg-paper text-ink-800 font-serif antialiased selection:bg-accent/20 selection:text-ink-900">
+
+<!-- ───────────────────────── Top bar ───────────────────────── -->
+<header class="sticky top-0 z-30 backdrop-blur bg-paper/80 border-b border-ink-700/10">
+  <div class="max-w-6xl mx-auto px-5 lg:px-8 py-3 flex items-center gap-4">
+    <a href="#top" class="flex items-center gap-2 font-sans font-semibold text-ink-900">
+      <span class="inline-grid place-items-center h-7 w-7 rounded-md bg-ink-900 text-paper text-[13px]">O</span>
+      <span class="tracking-tight">O-JEPA</span>
+    </a>
+    <span class="hidden md:inline text-ink-400 text-sm font-sans">Oscillating Joint-Embedding Predictive Architecture</span>
+    <nav class="ml-auto hidden lg:flex items-center gap-5 text-sm font-sans text-ink-500">
+      <a href="#abstract" class="hover:text-accent">Abstract</a>
+      <a href="#introduction" class="hover:text-accent">Introduction</a>
+      <a href="#methodology" class="hover:text-accent">Method</a>
+      <a href="#training" class="hover:text-accent">Training</a>
+      <a href="#efficiency" class="hover:text-accent">Efficiency</a>
+      <a href="#cite" class="hover:text-accent">Cite</a>
+    </nav>
+    <a href="https://github.com/1os3/O-JEPA" target="_blank" rel="noopener"
+       class="ml-auto lg:ml-0 inline-flex items-center gap-1.5 rounded-md border border-ink-700/15 bg-white/70 px-3 py-1.5 text-sm font-sans font-medium text-ink-700 hover:bg-white hover:border-ink-700/30 transition">
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56 0-.27-.01-1-.02-1.97-3.2.7-3.87-1.54-3.87-1.54-.52-1.32-1.27-1.67-1.27-1.67-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.25 3.34.96.1-.74.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.16 1.18a10.97 10.97 0 0 1 5.76 0c2.2-1.49 3.16-1.18 3.16-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.4-5.25 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .31.21.68.8.56C20.21 21.39 23.5 17.08 23.5 12 23.5 5.65 18.35.5 12 .5z"/></svg>
+      GitHub
+    </a>
+  </div>
+</header>
+
+<a id="top"></a>
+
+<div class="max-w-6xl mx-auto px-5 lg:px-8">
+  <div class="lg:grid lg:grid-cols-[minmax(0,1fr)_220px] lg:gap-10">
+
+    <!-- ───────────────────── Article ───────────────────── -->
+    <article class="py-10 lg:py-14 max-w-reading mx-auto lg:mx-0">
+
+      <!-- Hero -->
+      <section class="mb-12">
+        <p class="font-sans text-xs uppercase tracking-[0.18em] text-accent-dark/80 mb-4">
+          Preprint · End-to-End Autonomous Driving
+        </p>
+        <h1 class="text-3xl sm:text-4xl lg:text-[2.6rem] leading-[1.15] font-bold text-ink-900 tracking-tight">
+          O-JEPA: A Lightweight Oscillating Joint-Embedding Predictive Architecture for Calibration-Free End-to-End Autonomous Driving
+        </h1>
+        <h2 class="mt-4 text-xl sm:text-2xl text-ink-600 font-medium leading-snug">
+          迈向免标定与认知振荡的轻量级端到端自动驾驶联合嵌入预测架构
+        </h2>
+
+        <div class="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-ink-600 font-sans text-sm">
+          <span><span class="text-ink-900 font-semibold">1os3</span><sup class="text-ink-400">★</sup></span>
+          <span class="text-ink-400">·</span>
+          <span class="text-ink-500">Independent Research</span>
+        </div>
+
+        <div class="mt-6 flex flex-wrap gap-2 font-sans text-sm">
+          <a href="#abstract"
+             class="inline-flex items-center gap-1.5 rounded-md bg-ink-900 px-3.5 py-1.5 text-paper hover:bg-ink-700 transition">
+            <span aria-hidden="true">▸</span> Read Paper
+          </a>
+          <a href="https://github.com/1os3/O-JEPA" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-1.5 rounded-md border border-ink-700/20 bg-white px-3.5 py-1.5 text-ink-700 hover:border-ink-700/40 transition">
+            Code (TBA)
+          </a>
+          <a href="#cite"
+             class="inline-flex items-center gap-1.5 rounded-md border border-ink-700/20 bg-white px-3.5 py-1.5 text-ink-700 hover:border-ink-700/40 transition">
+            BibTeX
+          </a>
+        </div>
+
+        <!-- Highlight strip -->
+        <div class="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 font-sans text-[13px]">
+          <div class="rounded-lg border border-ink-700/10 bg-white px-4 py-3">
+            <div class="text-ink-400 text-xs uppercase tracking-wider">免标定</div>
+            <div class="mt-1 text-ink-900 font-semibold">Calibration-Free</div>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white px-4 py-3">
+            <div class="text-ink-400 text-xs uppercase tracking-wider">隐空间</div>
+            <div class="mt-1 text-ink-900 font-semibold">Latent-Only</div>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white px-4 py-3">
+            <div class="text-ink-400 text-xs uppercase tracking-wider">单卡可训</div>
+            <div class="mt-1 text-ink-900 font-semibold">Single-GPU</div>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white px-4 py-3">
+            <div class="text-ink-400 text-xs uppercase tracking-wider">非自回归</div>
+            <div class="mt-1 text-ink-900 font-semibold">Non-AR Cot</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Abstract -->
+      <section id="abstract" class="prose-section">
+        <h3 class="section-title">Abstract <span class="section-title-en">摘要</span></h3>
+        <p>
+          当前端到端自动驾驶模型深陷于繁重的显式几何转换（如 LSS）、高昂的自回归计算（如 LLM）以及极端的算力依赖中。
+          为打破这一僵局，本文提出了一种具有极简架构与深层认知能力的顶尖端到端模型——
+          <strong>O-JEPA (Oscillating-JEPA)</strong>。本模型抛弃了所有手工几何标定与像素级生成，全程在紧凑的隐空间内运行，
+          具有极佳的参数效率，可在单张普通消费级显卡上完成全流程训练。
+        </p>
+        <p class="mt-4">核心创新包括：</p>
+        <ol class="mt-2 space-y-2 list-decimal pl-6 marker:text-accent-dark/70 marker:font-semibold">
+          <li><strong>免标定隐式 3D-BEV</strong>：利用 3D RoPE 与交叉注意力直接聚合纯视觉特征，并在训练期通过密集射线采样与特征一致性引入 LiDAR 知识。</li>
+          <li><strong>振荡分层表征模型 (O-HRM)</strong>：采用共享权重的时空双频周期振荡网络，实现高层语义与低层世界状态的跨尺度耦合。</li>
+          <li><strong>非自回归思维链与末端分化 (WTA-Branching)</strong>：引入若干高度概括的语义 Token 并在网络末端分化出多个并行预测头，利用 Winner-Takes-All (WTA) 与最大熵正则化，在仅有确定性监督数据的场景下自发涌现出多模态的未来预测能力。</li>
+        </ol>
+      </section>
+
+      <!-- 1. Introduction -->
+      <section id="introduction" class="prose-section">
+        <h3 class="section-title"><span class="section-num">1</span> Introduction <span class="section-title-en">引言</span></h3>
+        <p>
+          端到端自动驾驶（E2E AD）正从基于模块化的感知-决策管线向统一人工智能演进。然而，现有范式存在三大致命缺陷：
+        </p>
+        <div class="mt-5 grid sm:grid-cols-3 gap-3 font-sans text-sm not-prose">
+          <div class="rounded-lg border border-ink-700/10 bg-white p-4">
+            <div class="text-accent-dark font-semibold mb-1">① 几何标定依赖</div>
+            <p class="text-ink-600 leading-relaxed">主流模型高度依赖精准的相机内外参以构建视锥与 BEV，这在跨车型、跨传感器布局部署时带来灾难性的泛化难题。</p>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white p-4">
+            <div class="text-accent-dark font-semibold mb-1">② 多模态未来坍缩</div>
+            <p class="text-ink-600 leading-relaxed">人类驾驶面临多分支的未来可能（变道、跟车、急刹），但真实数据往往仅含单一确定性操作，导致模型陷入 Mode Collapse。</p>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white p-4">
+            <div class="text-accent-dark font-semibold mb-1">③ 算力 / 可解释缺失</div>
+            <p class="text-ink-600 leading-relaxed">引入 VLM/LLM 虽带来丰富思维链，但庞大参数量与自回归时延使纯车端部署遥不可及。</p>
+          </div>
+        </div>
+        <p class="mt-6">
+          为此，我们提出了统一且干净的 O-JEPA 架构。受大脑层级预测编码机制 (Hierarchical Predictive Coding) 与隐式神经场 (NeRF) 思想启发，
+          O-JEPA 实现了一种<strong>低成本、强解释、高动态容量</strong>的全新基座。
+        </p>
+      </section>
+
+      <!-- 2. Methodology -->
+      <section id="methodology" class="prose-section">
+        <h3 class="section-title"><span class="section-num">2</span> Methodology <span class="section-title-en">核心架构方法</span></h3>
+        <p>
+          O-JEPA 摒弃了传统的解码器重建管线，整个模型被定义为一个非自回归的序列到序列（Seq2Seq）隐式映射过程。
+          全局特征被投影至轻量化友好的统一维度中。
+        </p>
+
+        <!-- ── Architecture overview (HTML/CSS, no SVG) ── -->
+        <figure class="not-prose my-10">
+          <div class="rounded-2xl border border-ink-700/10 bg-white p-6 sm:p-8">
+            <div class="flex items-center justify-between font-sans text-xs text-ink-400 uppercase tracking-widest mb-5">
+              <span>Figure 1</span>
+              <span>Pipeline · 隐空间端到端</span>
+            </div>
+
+            <div class="space-y-3 font-sans text-[13px]">
+              <!-- Row 1 -->
+              <div class="flex flex-col sm:flex-row gap-3 items-stretch">
+                <div class="arch-card flex-1 from-sky-50 to-sky-100/40">
+                  <div class="arch-tag">Sensor</div>
+                  <div class="arch-title">Multi-view Cameras</div>
+                  <div class="arch-sub">N × 视觉输入 (RGB)</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-card flex-1 from-slate-50 to-slate-100/40">
+                  <div class="arch-tag">Backbone · frozen</div>
+                  <div class="arch-title">DINO-ViT</div>
+                  <div class="arch-sub">高维语义特征 𝓕<sub>img</sub></div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-card flex-1 from-indigo-50 to-indigo-100/40">
+                  <div class="arch-tag">Geometry</div>
+                  <div class="arch-title">3D RoPE Ray Encoding</div>
+                  <div class="arch-sub">射线方向注入 Token</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-card flex-1 from-blue-50 to-blue-100/40">
+                  <div class="arch-tag">Spatial</div>
+                  <div class="arch-title">Cross-Attn BEV Tokens</div>
+                  <div class="arch-sub">𝒯<sub>bev</sub> · 无内外参</div>
+                </div>
+              </div>
+
+              <!-- LiDAR teacher branch -->
+              <div class="flex justify-center">
+                <div class="arch-dashed">
+                  ↑ <span class="text-ink-500">LiDAR Teacher（仅训练期，密集射线采样蒸馏 𝓛<sub>bev</sub>）</span>
+                </div>
+              </div>
+
+              <!-- Down arrow centered -->
+              <div class="flex justify-center text-2xl text-ink-400 leading-none">↓</div>
+
+              <!-- Row 2: Sequence assembly -->
+              <div class="flex flex-col sm:flex-row gap-3 items-stretch">
+                <div class="arch-card flex-1 from-amber-50 to-amber-100/40">
+                  <div class="arch-tag">Context</div>
+                  <div class="arch-title">Visual CoT Slots</div>
+                  <div class="arch-sub">[场景][交规][危险][推演][决策][后果]</div>
+                </div>
+                <div class="arch-arrow">+</div>
+                <div class="arch-card flex-[1.4] from-emerald-50 to-emerald-100/40">
+                  <div class="arch-tag">Fusion</div>
+                  <div class="arch-title">Sequence Assembly · Triple-Injection</div>
+                  <div class="arch-sub">Token 拼接 · Concat · AdaLN 调制</div>
+                </div>
+                <div class="arch-arrow">+</div>
+                <div class="arch-card flex-1 from-rose-50 to-rose-100/40">
+                  <div class="arch-tag">State</div>
+                  <div class="arch-title">Nav · Ego · Goal</div>
+                  <div class="arch-sub">𝑆<sub>state</sub></div>
+                </div>
+              </div>
+
+              <div class="flex justify-center text-2xl text-ink-400 leading-none">↓</div>
+
+              <!-- Row 3: O-HRM -->
+              <div class="rounded-xl border border-accent-dark/20 bg-gradient-to-br from-blue-50 to-indigo-50 p-5">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="text-accent-dark text-xs font-semibold uppercase tracking-widest">Engine · Shared Weights</div>
+                    <div class="text-ink-900 text-base font-semibold mt-1">O-HRM 振荡分层表征引擎</div>
+                  </div>
+                  <div class="hidden sm:flex items-center gap-2 text-xs text-ink-500">
+                    <span class="px-2 py-0.5 rounded bg-white border border-ink-700/10">High-freq · 宏观语义</span>
+                    <span>↔</span>
+                    <span class="px-2 py-0.5 rounded bg-white border border-ink-700/10">Low-freq · 状态推演</span>
+                  </div>
+                </div>
+                <!-- mini oscillation -->
+                <div class="mt-4 grid grid-cols-2 gap-3">
+                  <div class="rounded-lg bg-white/70 border border-ink-700/10 p-3">
+                    <div class="text-[11px] text-ink-400 uppercase tracking-wider mb-2">High-Cycle 1</div>
+                    <div class="flex gap-1">
+                      <span class="hf-low">L</span><span class="hf-low">L</span><span class="hf-low">L</span>
+                    </div>
+                  </div>
+                  <div class="rounded-lg bg-white/70 border border-ink-700/10 p-3">
+                    <div class="text-[11px] text-ink-400 uppercase tracking-wider mb-2">High-Cycle 2</div>
+                    <div class="flex gap-1">
+                      <span class="hf-low">L</span><span class="hf-low">L</span><span class="hf-low">L</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-3 text-[12px] text-ink-500">同一权重模块 · AdaLN 注入步数 / 层级 · Bi-CA 双向同步</div>
+              </div>
+
+              <div class="flex justify-center text-2xl text-ink-400 leading-none">↓</div>
+
+              <!-- Row 4: WTA Heads -->
+              <div class="rounded-xl border border-ink-700/10 bg-white p-5">
+                <div class="flex items-center justify-between mb-4">
+                  <div>
+                    <div class="text-warm text-xs font-semibold uppercase tracking-widest">Branching</div>
+                    <div class="text-ink-900 text-base font-semibold mt-1">K Parallel Heads · WTA + Max-Entropy</div>
+                  </div>
+                  <div class="text-xs text-ink-500">先验置信度 P = [p₁ … p<sub>K</sub>]</div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  <div class="wta-head wta-winner">
+                    <div class="text-[11px]">Head 1 ★</div>
+                    <div class="font-semibold">变道</div>
+                  </div>
+                  <div class="wta-head"><div class="text-[11px]">Head 2</div><div class="font-semibold">跟车</div></div>
+                  <div class="wta-head"><div class="text-[11px]">Head 3</div><div class="font-semibold">避让</div></div>
+                  <div class="wta-head"><div class="text-[11px]">Head 4</div><div class="font-semibold">急刹</div></div>
+                  <div class="wta-head"><div class="text-[11px]">Head K</div><div class="font-semibold">…</div></div>
+                </div>
+              </div>
+
+              <div class="flex justify-center text-2xl text-ink-400 leading-none">↓</div>
+
+              <!-- Row 5: Decoder -->
+              <div class="flex flex-col sm:flex-row gap-3 items-stretch">
+                <div class="arch-card flex-[1.5] from-violet-50 to-violet-100/40">
+                  <div class="arch-tag">Decoder</div>
+                  <div class="arch-title">Adaptive Action Decoder</div>
+                  <div class="arch-sub">Cross-Attn · 软加权聚合 (P)</div>
+                </div>
+                <div class="arch-arrow">→</div>
+                <div class="arch-card flex-1 from-ink-700/5 to-ink-700/10">
+                  <div class="arch-tag">Output</div>
+                  <div class="arch-title">Trajectory + Control</div>
+                  <div class="arch-sub">轨迹规划点 · 转向 / 油门 / 刹车</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <figcaption class="mt-3 text-center text-sm text-ink-500 font-sans">
+            <strong class="text-ink-700">Figure 1.</strong> O-JEPA 端到端隐空间架构总览。冻结视觉骨干 → 免标定 BEV → 序列组装 → O-HRM 振荡引擎 → WTA 多分支 → 动作解码。
+          </figcaption>
+        </figure>
+
+        <!-- 2.1 -->
+        <h4 id="method-bev" class="subsection-title">2.1 视觉编码与免标定隐式 BEV 场 <span class="subsection-title-en">Calibration-Free Implicit BEV</span></h4>
+        <p>传统的基于 LSS 等方法的 BEV 构建需要显式的视锥投影和几何运算。我们提出一种纯注意力机制的连续三维表征空间构建方法：</p>
+        <ul class="bullets">
+          <li><strong>深层视觉先验</strong>：复用冻结的预训练强视觉特征抽取模型（如 DINO-ViT 系列）作为视觉骨干，提取高维语义特征 $\mathcal{F}_{img}$。</li>
+          <li><strong>3D RoPE 射线位置编码</strong>：为图像平面的每个像素定义基于自车坐标系的射线方向向量，并通过 3D 旋转位置编码（3D RoPE）将射线几何信息注入图像 Token。</li>
+          <li><strong>全注意力投影</strong>：初始化一定规模的可学习 BEV Tokens $\mathcal{T}_{bev}$（位置编码定义为可学习的隐式向量）。以 $\mathcal{T}_{bev}$ 为 Query，带射线方向信息的 $\mathcal{F}_{img}$ 为 Key/Value，模型通过交叉注意力自主学习空间对应关系，全过程<strong>无需任何显式内外参</strong>。</li>
+          <li><strong>LiDAR 密集射线采样蒸馏（仅训练期 Teacher）</strong>：在训练阶段沿 LiDAR 射线密集采样，利用网络预测三维空间特征 $\mathcal{F}_{3D}$，引入特征一致性约束，使 $\mathcal{F}_{3D}$ 逆投影后必须与图像特征强对齐。这迫使隐空间在没有标定的情况下自发构建出具几何与语义一致性的连续三维表征。</li>
+        </ul>
+
+        <!-- 2.2 -->
+        <h4 id="method-sequence" class="subsection-title">2.2 序列组装与状态三重注入 <span class="subsection-title-en">Sequence Assembly & Triple-Injection</span></h4>
+        <p>进入认知引擎的输入序列经过精心设计，由三大类表征构成：</p>
+        <ol class="numbered">
+          <li><strong>世界环境 Token</strong>：上述的 $\mathcal{T}_{bev}$，负责压缩并承载多帧时空的历史隐式特征。</li>
+          <li><strong>Visual CoT 语义槽</strong>：引入多个可学习 Prompt Tokens，细粒度地锚定不同的思维维度（例如：<code>[场景]</code>、<code>[交规]</code>、<code>[潜在危险]</code>、<code>[下一步推演]</code>、<code>[本车决策]</code>、<code>[决策后果]</code>）。</li>
+          <li>
+            <strong>状态三重注入</strong>：对于导航指令、自车运动学状态和目标点信息 $S_{state}$，为防止高维视觉 Token 将其淹没，设计了强化的 Triple-Injection：
+            <ul class="bullets mt-2">
+              <li><strong>独立 Token 注入</strong>：作为显式上下文 Token 拼接于序列。</li>
+              <li><strong>特征强行拼接</strong>：在通道维度将状态表征与 BEV Token Concatenate（结合降维以维持主干维度不变）。</li>
+              <li><strong>AdaLN 调制</strong>：由状态特征生成全局仿射 $\gamma, \beta$，在 LayerNorm 阶段执行全局调制。</li>
+            </ul>
+          </li>
+        </ol>
+
+        <!-- 2.3 -->
+        <h4 id="method-ohrm" class="subsection-title">2.3 振荡分层表征网络 <span class="subsection-title-en">Oscillating HRM Engine</span></h4>
+        <p>传统时空网络通过不断堆叠串行的 Transformer 层来获取深层感受野，导致参数量线性膨胀。O-JEPA 提出采用极其精简的核心网络构建高频与低频耦合的双周期振荡网络（O-HRM）。</p>
+        <ul class="bullets">
+          <li><strong>双重周期机制</strong>：模型在时间与逻辑轴上被划分为多个<strong>高层周期（宏观语义/低频）</strong>，每个高层周期内部嵌套多个<strong>低层周期（微观状态推演/高频）</strong>。</li>
+          <li><strong>权重共享 + AdaLN 身份识别</strong>：所有周期的前向计算均由<strong>同一个共享权重的网络模块</strong>执行；由“高层步数 / 低层步数 / 层级类型”生成嵌入向量，通过 AdaLN 注入网络，使模型在“宏观战略深思”与“微观战术推演”间振荡切换。</li>
+          <li><strong>双向交互与全序列感知</strong>：高层（抽象策略 / 宏观语义）与低层（时空流转 / 未来环境演变）均直接处理全局序列；高低层交替之际通过双向交叉注意力（Bi-CA）同步特征，实现宏观认知与微观感知的完美闭环。</li>
+        </ul>
+
+        <!-- O-HRM oscillation viz -->
+        <figure class="not-prose my-8">
+          <div class="rounded-2xl border border-ink-700/10 bg-white p-6">
+            <div class="font-sans text-xs text-ink-400 uppercase tracking-widest mb-4">Figure 2 · O-HRM 振荡时序</div>
+            <div class="font-sans text-[12px] space-y-3">
+              <!-- High wave -->
+              <div class="flex items-center gap-3">
+                <div class="w-24 text-accent-dark font-semibold">High · 低频</div>
+                <div class="flex-1 grid grid-cols-12 gap-1">
+                  <div class="hf-bar h-8 bg-accent-dark/80"></div>
+                  <div class="col-span-2"></div>
+                  <div class="hf-bar h-8 bg-accent-dark/80"></div>
+                  <div class="col-span-2"></div>
+                  <div class="hf-bar h-8 bg-accent-dark/80"></div>
+                  <div class="col-span-2"></div>
+                  <div class="hf-bar h-8 bg-accent-dark/80"></div>
+                  <div class="col-span-1"></div>
+                </div>
+              </div>
+              <!-- Low wave -->
+              <div class="flex items-center gap-3">
+                <div class="w-24 text-warm font-semibold">Low · 高频</div>
+                <div class="flex-1 grid grid-cols-12 gap-1">
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                  <div class="hf-bar h-4 bg-warm/70"></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <div class="w-24 text-ink-500">Bi-CA 同步</div>
+                <div class="flex-1 text-ink-500">高低层在每个周期边界做双向交叉注意力对齐 · 共享同一组参数 (θ)</div>
+              </div>
+            </div>
+          </div>
+          <figcaption class="mt-3 text-center text-sm text-ink-500 font-sans">
+            <strong class="text-ink-700">Figure 2.</strong> O-HRM 双频振荡：低频高层周期承载宏观策略，高频低层周期负责状态演进。
+          </figcaption>
+        </figure>
+
+        <!-- 2.4 -->
+        <h4 id="method-wta" class="subsection-title">2.4 末端分化与 WTA 多概率预测 <span class="subsection-title-en">Terminal Branching & Winner-Takes-All</span></h4>
+        <p>在 O-HRM 完成主干特征提取后，为了在人类给定的单一直觉驾驶数据（确定性真值）中逼迫模型涌现“多模态概率思考”，引入末端分化策略。</p>
+        <ul class="bullets">
+          <li><strong>并行分支头</strong>：主干网络末端分裂出 $K$ 个独立轻量级 Head；每个 Head 并行输出未来多帧的隐状态预测序列 $\hat{\mathcal{S}}_k$ 与对应语义预测 Token $\hat{\mathcal{C}}_k$，并输出该分支置信度先验分布 $P=[p_1,\dots,p_K]$。</li>
+          <li>
+            <strong>WTA 梯度截断</strong>：动态寻找距离真值隐状态最近的“胜出”分支 $k^{*}$（Winner）。
+            <ul class="bullets mt-2">
+              <li>反向传播时，<strong>仅允许</strong> $k^*$ 分支回传环境与语义预测梯度。</li>
+              <li>对其余未胜出分支，截断其预测特征方向的梯度传播。</li>
+            </ul>
+          </li>
+          <li><strong>NLL 与不确定性建模</strong>：使用负对数似然损失惩罚未胜出分支的先验置信度分布。</li>
+          <li><strong>防止模式坍缩</strong>：引入最大熵正则化 $\mathcal{L}_{Ent}=\sum p_k\log p_k$，强制各 Head 维持均等探索概率，促使其自发涌现出截然不同的未来世界线（专职变道、跟车或避让等 Head）。</li>
+        </ul>
+
+        <!-- 2.5 -->
+        <h4 id="method-decoder" class="subsection-title">2.5 自适应动作解码器 <span class="subsection-title-en">Adaptive Action Decoder</span></h4>
+        <ul class="bullets">
+          <li><strong>置信度加权捕获</strong>：Decoder 的查询向量在聚合世界特征时，依据先验概率分布 $P$ 对所有 $K$ 个 Head 的预测特征进行软加权（Soft-weighting）。</li>
+          <li><strong>直接回归</strong>：基于聚合后的统一特征，直接确定性输出短期轨迹规划点与底盘级控制指令（转向、油门、刹车）。</li>
+        </ul>
+      </section>
+
+      <!-- 3. Training -->
+      <section id="training" class="prose-section">
+        <h3 class="section-title"><span class="section-num">3</span> Training Objective <span class="section-title-en">训练策略与损失函数</span></h3>
+        <p>模型支持大规模的自监督学习（SSL）为主，并辅以少量强监督的微调对齐（SFT）。</p>
+
+        <h4 class="subsection-title">Phase 1: 隐空间联合嵌入预训练 <span class="subsection-title-en">SSL</span></h4>
+        <p>通过屏蔽部分未来的感知输入，利用 WTA 机制让模型在纯隐空间预测未来：</p>
+
+        <div class="loss-card">
+          <div class="loss-tag">隐世界预测损失 · WTA-MSE</div>
+          $$ \mathcal{L}_{world} = \lVert \hat{\mathcal{S}}_{k^{*}} - \mathcal{S}_{gt} \rVert_2^2 $$
+        </div>
+
+        <div class="loss-card">
+          <div class="loss-tag">多模态探索损失 · NLL + Entropy</div>
+          $$ \mathcal{L}_{branch} = -\log(p_{k^{*}}) + \lambda_{ent}\sum_{k} p_k \log p_k $$
+        </div>
+
+        <div class="loss-card">
+          <div class="loss-tag">隐式三维特征一致性损失 · LiDAR Teacher</div>
+          $$ \mathcal{L}_{bev} = 1 - \mathrm{CosineSimilarity}\!\left(\mathrm{Proj}(\mathcal{F}_{3D}),\, \mathcal{F}_{img}\right) $$
+        </div>
+
+        <h4 class="subsection-title mt-10">Phase 2: 语义蒸馏与控制对齐 <span class="subsection-title-en">SFT</span></h4>
+        <p>无需在车端实时运行高耗能的语言模型。利用云端大语言/多模态模型离线生成驾驶思维链，并通过文本嵌入模型提取为固定维度的真实语义向量 $E_{cot}$。</p>
+
+        <div class="loss-card">
+          <div class="loss-tag">语义思维链蒸馏 · Visual CoT Alignment</div>
+          $$ \mathcal{L}_{sem} = \sum_{i}\bigl(1 - \mathrm{CosineSimilarity}(\hat{\mathcal{C}}_{k^{*}}[i],\, E_{cot}[i])\bigr) $$
+        </div>
+
+        <p class="mt-4">控制与轨迹模仿采用标准回归损失（如 L1 Loss）与监督数据对齐：$\mathcal{L}_{act}$。</p>
+
+        <div class="loss-card loss-card-strong">
+          <div class="loss-tag">总优化目标</div>
+          $$ \mathcal{L}_{Total} = \mathcal{L}_{world} + \mathcal{L}_{branch} + \lambda_1 \mathcal{L}_{bev} + \lambda_2 \mathcal{L}_{sem} + \lambda_3 \mathcal{L}_{act} $$
+        </div>
+      </section>
+
+      <!-- 4. Efficiency -->
+      <section id="efficiency" class="prose-section">
+        <h3 class="section-title"><span class="section-num">4</span> Efficiency Analysis <span class="section-title-en">架构极度轻量化分析</span></h3>
+        <p>O-JEPA 严格遵循极致工程轻量化原则，其单卡可训的底层逻辑在于巧妙的架构设计而非暴力算力堆叠：</p>
+
+        <div class="not-prose mt-6 grid sm:grid-cols-2 gap-3 font-sans text-sm">
+          <div class="rounded-lg border border-ink-700/10 bg-white p-4">
+            <div class="text-accent-dark font-semibold mb-1">① 特征抽取的零负担</div>
+            <p class="text-ink-600 leading-relaxed">复用并完全冻结强视觉骨干网络，训练阶段不产生任何主干网络的梯度显存开销。</p>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white p-4">
+            <div class="text-accent-dark font-semibold mb-1">② 空间转换的低代价</div>
+            <p class="text-ink-600 leading-relaxed">免标定的交叉注意力 BEV 编码器仅依赖单层注意力即可完成 2D→隐式 3D 聚合，避免高耗能 3D 卷积。</p>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white p-4">
+            <div class="text-accent-dark font-semibold mb-1">③ 认知引擎的极致复用</div>
+            <p class="text-ink-600 leading-relaxed">O-HRM 振荡网络完全共享权重，时间步上展开多次循环达到极深推理深度，物理参数量仅相当于极少数层的标准 Transformer——<strong>以时间复杂度换取空间复杂度</strong>。</p>
+          </div>
+          <div class="rounded-lg border border-ink-700/10 bg-white p-4">
+            <div class="text-accent-dark font-semibold mb-1">④ 无重型解码器</div>
+            <p class="text-ink-600 leading-relaxed">全程不进行图像级高分辨率像素重建（摒弃 Diffusion / GAN），亦不进行逐词自回归生成，激活内存与反向计算图被压缩到极致。</p>
+          </div>
+        </div>
+
+        <p class="mt-6">这些极简且纯粹的设计，使得整个模型的主体可训练参数被控制在极为轻量级的范畴。研究者能够轻易地在普通单张消费级显卡上，采用可观的 Batch-Size 运行并行训练；而在车端推理时，纯隐空间的矩阵乘法能够将系统延迟（Latency）压缩至极低水位。</p>
+      </section>
+
+      <!-- 5. Conclusion -->
+      <section id="conclusion" class="prose-section">
+        <h3 class="section-title"><span class="section-num">5</span> Conclusion <span class="section-title-en">结论</span></h3>
+        <p>
+          O-JEPA 重新定义了端到端自动驾驶的基础范式。通过<strong>免标定隐空间神经场</strong>破解了跨车型泛化难题；
+          通过<strong>共享振荡网络（O-HRM）</strong>以极低的参数代价实现了深不可测的时空表征能力；
+          通过<strong>WTA 多概率分支</strong>以非自回归的极低成本涌现出大模型才具备的“思维链与推演”能力。
+          O-JEPA 严格遵守了严苛的算力与显存约束，展现了作为下一代兼具高智能与高解释性的量产级自动驾驶基座的巨大潜力。
+        </p>
+      </section>
+
+      <!-- BibTeX -->
+      <section id="cite" class="prose-section">
+        <h3 class="section-title">BibTeX <span class="section-title-en">引用</span></h3>
+        <div class="not-prose relative rounded-xl border border-ink-700/10 bg-ink-900 text-paper p-5 font-mono text-[13px] leading-relaxed overflow-x-auto">
+          <button id="copyBibBtn"
+            class="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-md bg-white/10 hover:bg-white/20 transition px-2.5 py-1 text-xs font-sans text-paper border border-white/10">
+            <span id="copyBibIcon">⧉</span><span id="copyBibText">Copy</span>
+          </button>
+<pre id="bibtex" class="whitespace-pre">@article{ojepa2026,
+  title   = {O-JEPA: A Lightweight Oscillating Joint-Embedding Predictive
+             Architecture for Calibration-Free End-to-End Autonomous Driving},
+  author  = {1os3},
+  year    = {2026},
+  note    = {Preprint},
+  url     = {https://github.com/1os3/O-JEPA}
+}</pre>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="mt-16 pt-8 border-t border-ink-700/10 text-sm font-sans text-ink-500 flex flex-wrap items-center justify-between gap-4">
+        <div>© 2026 1os3 · O-JEPA project</div>
+        <div class="flex items-center gap-4">
+          <a href="https://github.com/1os3/O-JEPA" target="_blank" rel="noopener" class="hover:text-accent">GitHub</a>
+          <a href="#top" class="hover:text-accent">Back to top ↑</a>
+        </div>
+      </footer>
+    </article>
+
+    <!-- ───────────────────── Sticky TOC ───────────────────── -->
+    <aside class="hidden lg:block">
+      <nav id="toc" class="sticky top-24 py-14 text-sm font-sans">
+        <div class="text-ink-400 uppercase tracking-widest text-[11px] mb-3">Contents</div>
+        <ul class="space-y-1.5">
+          <li><a class="toc-link" href="#abstract">Abstract</a></li>
+          <li><a class="toc-link" href="#introduction">1 · Introduction</a></li>
+          <li>
+            <a class="toc-link" href="#methodology">2 · Methodology</a>
+            <ul class="mt-1 ml-3 space-y-1 border-l border-ink-700/10 pl-3 text-ink-400">
+              <li><a class="toc-sub" href="#method-bev">2.1 Implicit BEV</a></li>
+              <li><a class="toc-sub" href="#method-sequence">2.2 Sequence + Triple-Inj.</a></li>
+              <li><a class="toc-sub" href="#method-ohrm">2.3 O-HRM Engine</a></li>
+              <li><a class="toc-sub" href="#method-wta">2.4 WTA Branching</a></li>
+              <li><a class="toc-sub" href="#method-decoder">2.5 Action Decoder</a></li>
+            </ul>
+          </li>
+          <li><a class="toc-link" href="#training">3 · Training</a></li>
+          <li><a class="toc-link" href="#efficiency">4 · Efficiency</a></li>
+          <li><a class="toc-link" href="#conclusion">5 · Conclusion</a></li>
+          <li><a class="toc-link" href="#cite">BibTeX</a></li>
+        </ul>
+      </nav>
+    </aside>
+  </div>
+</div>
+
+<script>
+  // ── Scroll-spy: highlight current section in TOC ──
+  (function () {
+    const links = Array.from(document.querySelectorAll('#toc a[href^="#"]'));
+    const map = new Map();
+    links.forEach(l => {
+      const id = l.getAttribute('href').slice(1);
+      const el = document.getElementById(id);
+      if (el) map.set(el, l);
+    });
+    const setActive = (link) => {
+      links.forEach(l => l.classList.remove('toc-active'));
+      if (link) link.classList.add('toc-active');
+    };
+    const io = new IntersectionObserver((entries) => {
+      entries
+        .filter(e => e.isIntersecting)
+        .sort((a, b) => a.target.offsetTop - b.target.offsetTop)
+        .forEach(e => setActive(map.get(e.target)));
+    }, { rootMargin: '-30% 0px -60% 0px', threshold: 0.01 });
+    map.forEach((_, el) => io.observe(el));
+  })();
+
+  // ── BibTeX copy button ──
+  (function () {
+    const btn = document.getElementById('copyBibBtn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+      const text = document.getElementById('bibtex').innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        document.getElementById('copyBibText').textContent = 'Copied';
+        document.getElementById('copyBibIcon').textContent = '✓';
+        setTimeout(() => {
+          document.getElementById('copyBibText').textContent = 'Copy';
+          document.getElementById('copyBibIcon').textContent = '⧉';
+        }, 1600);
+      } catch (e) {
+        console.warn(e);
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>

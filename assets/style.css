@@ -1,0 +1,224 @@
+/* ────────────────────────────────────────────────────────────
+   O-JEPA · arxiv-style supplemental sheet
+   Tailwind utilities handle the heavy lifting; this file adds:
+     • Section / subsection rhythm
+     • Reusable arch-card / loss-card components
+     • TOC active-state styling
+     • KaTeX tweaks
+   ──────────────────────────────────────────────────────────── */
+
+html { scroll-behavior: smooth; scroll-padding-top: 4.5rem; }
+body { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+
+/* Long-form prose rhythm */
+.prose-section { margin-top: 3.25rem; }
+.prose-section p { color: #1e293b; line-height: 1.78; font-size: 1.0625rem; margin-top: 0.85rem; }
+.prose-section ul.bullets,
+.prose-section ol.numbered { margin-top: 0.85rem; padding-left: 1.4rem; }
+.prose-section ul.bullets { list-style: disc; }
+.prose-section ol.numbered { list-style: decimal; }
+.prose-section ul.bullets li,
+.prose-section ol.numbered li { margin: 0.5rem 0; line-height: 1.78; color: #1e293b; }
+.prose-section ul.bullets li::marker { color: #1e3a8a; }
+.prose-section ol.numbered li::marker { color: #1e3a8a; font-weight: 600; }
+.prose-section code {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.85em;
+  background: #f4f2ec;
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  color: #1e293b;
+}
+
+/* Section heading */
+.section-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 1.55rem;
+  line-height: 1.25;
+  color: #0f172a;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+.section-title .section-num {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: #0f172a;
+  color: #fbfaf7;
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+  letter-spacing: 0.02em;
+}
+.section-title-en {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: auto;
+  letter-spacing: 0;
+}
+
+/* Subsection heading */
+.subsection-title {
+  margin-top: 2.25rem;
+  font-size: 1.18rem;
+  font-weight: 600;
+  color: #0f172a;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.subsection-title-en {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #64748b;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* ── Architecture cards (HTML pipeline diagram) ── */
+.arch-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.7rem;
+  background-image: linear-gradient(135deg, var(--tw-gradient-stops));
+  min-width: 0;
+}
+.arch-tag {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #1e3a8a;
+}
+.arch-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.35;
+}
+.arch-sub {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.45;
+}
+.arch-arrow {
+  display: grid;
+  place-items: center;
+  font-size: 1.4rem;
+  color: #94a3b8;
+  font-weight: 300;
+  flex-shrink: 0;
+  width: 1.5rem;
+}
+.arch-dashed {
+  display: inline-flex;
+  gap: 0.4rem;
+  align-items: center;
+  font-size: 0.78rem;
+  color: #475569;
+  border: 1px dashed rgba(15, 23, 42, 0.18);
+  border-radius: 0.55rem;
+  padding: 0.35rem 0.85rem;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+/* HRM oscillation — small low-cycle pills */
+.hf-low {
+  width: 1.6rem;
+  height: 1.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 5px;
+  background: linear-gradient(180deg, #fde68a, #fbbf24);
+  color: #78350f;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+.hf-bar { border-radius: 2px; }
+
+/* WTA heads */
+.wta-head {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.55rem;
+  padding: 0.55rem 0.7rem;
+  background: #fbfaf7;
+  text-align: center;
+  color: #475569;
+  transition: transform .15s ease;
+}
+.wta-head .font-semibold { color: #1e293b; }
+.wta-winner {
+  border-color: #b45309;
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  color: #78350f;
+  box-shadow: 0 4px 18px -8px rgba(180, 83, 9, 0.55);
+}
+.wta-winner .font-semibold { color: #78350f; }
+
+/* ── Loss formula card ── */
+.loss-card {
+  margin: 1.1rem 0;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 0.85rem;
+  background: #ffffff;
+  padding: 1rem 1.25rem 1.25rem;
+  position: relative;
+  overflow-x: auto;
+}
+.loss-card .loss-tag {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #1e3a8a;
+  margin-bottom: 0.5rem;
+}
+.loss-card-strong {
+  background: linear-gradient(135deg, #f4f2ec, #fffbeb);
+  border-color: rgba(180, 83, 9, 0.25);
+}
+.loss-card-strong .loss-tag { color: #b45309; }
+
+/* KaTeX adjustments */
+.katex { font-size: 1.05em; }
+.katex-display { margin: 0.5rem 0 0.25rem; }
+.loss-card .katex-display { margin: 0; }
+
+/* ── TOC link styling ── */
+.toc-link, .toc-sub {
+  display: block;
+  color: #475569;
+  text-decoration: none;
+  padding: 0.18rem 0.5rem;
+  border-left: 2px solid transparent;
+  border-radius: 0 4px 4px 0;
+  transition: color .15s, border-color .15s, background .15s;
+}
+.toc-link:hover, .toc-sub:hover { color: #1d4ed8; }
+.toc-active {
+  color: #0f172a !important;
+  border-left-color: #1d4ed8;
+  background: rgba(29, 78, 216, 0.06);
+  font-weight: 600;
+}
+
+/* Headings inside numbered tag for sections */
+.section-title { scroll-margin-top: 5rem; }
+.subsection-title { scroll-margin-top: 5rem; }
+
+/* Print: hide TOC + header */
+@media print {
+  header, aside { display: none !important; }
+  body { background: #ffffff; }
+  .arch-card, .wta-head, .loss-card { break-inside: avoid; }
+}
