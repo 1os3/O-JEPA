@@ -80,14 +80,19 @@
       <!-- Hero -->
       <section class="mb-12">
         <p class="font-sans text-xs uppercase tracking-[0.18em] text-accent-dark/80 mb-4">
-          Preprint · End-to-End Autonomous Driving
+          Preliminary Design · End-to-End Autonomous Driving
         </p>
         <h1 class="text-3xl sm:text-4xl lg:text-[2.6rem] leading-[1.15] font-bold text-ink-900 tracking-tight">
           O-JEPA: A Lightweight Oscillating Joint-Embedding Predictive Architecture for Calibration-Free End-to-End Autonomous Driving
         </h1>
         <h2 class="mt-4 text-xl sm:text-2xl text-ink-600 font-medium leading-snug">
-          迈向免标定与认知振荡的轻量级端到端自动驾驶联合嵌入预测架构
+          面向免标定与认知振荡的轻量级端到端自动驾驶联合嵌入预测架构
         </h2>
+
+        <div class="mt-5 rounded-md border border-warm/30 bg-warm-soft/50 px-4 py-3 font-sans text-[13px] leading-relaxed text-ink-700">
+          <span class="font-semibold text-warm">Status</span> · 本文档为<strong>基础设计原型 (preliminary design)</strong>，尚未完成实现与系统性实验验证。
+          文中所述的效率、泛化、涌现等性质均为<strong>设计目标</strong>或<strong>理论预期</strong>，最终是否成立有待后续工作验证。
+        </div>
 
         <div class="mt-7 flex flex-wrap items-center gap-x-6 gap-y-2 text-ink-600 font-sans text-sm">
           <span><span class="text-ink-900 font-semibold">1os3</span><sup class="text-ink-400">★</sup></span>
@@ -135,16 +140,15 @@
       <section id="abstract" class="prose-section">
         <h3 class="section-title">Abstract <span class="section-title-en">摘要</span></h3>
         <p>
-          当前端到端自动驾驶模型深陷于繁重的显式几何转换（如 LSS）、高昂的逐 Token 自回归解码（如 LLM）以及极端的算力依赖中。
-          为打破这一僵局，本文提出了一种具有极简架构与深层认知能力的顶尖端到端模型——
-          <strong>O-JEPA (Oscillating-JEPA)</strong>。本模型抛弃了所有手工几何标定与像素级生成，全程在紧凑的隐空间内运行，
-          具有极佳的参数效率，可在单张普通消费级显卡上完成全流程训练。
+          当前端到端自动驾驶模型在显式几何转换（如 LSS）、逐 Token 自回归解码（如 LLM）以及算力依赖等维度上均存在显著工程负担。
+          针对这些问题，本文提出一种轻量化的端到端架构原型——<strong>O-JEPA (Oscillating-JEPA)</strong>。
+          该设计摒弃 LSS / IPM 等手工几何投影管线与像素级生成，全程在隐空间内运行，<strong>目标</strong>是在采用小型视觉骨干（如 DINOv3-S/B）时具备在单张消费级显卡上完成训练的可行性。
         </p>
-        <p class="mt-4">核心创新包括：</p>
+        <p class="mt-4">核心设计选择包括：</p>
         <ol class="mt-2 space-y-2 list-decimal pl-6 marker:text-accent-dark/70 marker:font-semibold">
           <li><strong>无手工投影的隐式 3D-BEV</strong>：摒弃 LSS / IPM 等手工设计的视锥投影管线——相机内外参仅一次性用于计算每个像素的射线方向，由 3D RoPE 注入图像 Token，再经交叉注意力让模型自主学习 2D→3D 的隐式空间对应；训练期通过 LiDAR 密集射线采样与特征一致性蒸馏几何先验。</li>
-          <li><strong>振荡分层表征模型 (O-HRM)</strong>：采用共享权重的时空双频周期振荡网络，实现高层语义与低层世界状态的跨尺度耦合。</li>
-          <li><strong>并行涌现式思维链与末端分化 (WTA-Branching)</strong>：引入若干高度概括的语义 Token 并在网络末端分化出多个并行预测头，利用 Winner-Takes-All (WTA) 与最大熵正则化，在仅有确定性监督数据的场景下自发涌现出多模态的未来预测能力——整个思维链在一次前向中并行产出，无需任何逐 Token 文本解码。</li>
+          <li><strong>振荡分层表征模型 (O-HRM)</strong>：采用共享权重的时空双频周期振荡网络，<strong>旨在</strong>实现高层语义与低层世界状态的跨尺度耦合。</li>
+          <li><strong>并行涌现式思维链与末端分化 (WTA-Branching)</strong>：引入若干高度概括的语义 Token 并在网络末端分化出多个并行预测头，利用 Winner-Takes-All (WTA) 与最大熵（必要时辅以显式 diversity 项）正则化，<strong>期望</strong>在仅有确定性监督数据的场景下诱导出多模态的未来预测——整个思维链在一次前向中并行产出，无需逐 Token 文本解码。</li>
         </ol>
       </section>
 
@@ -152,25 +156,25 @@
       <section id="introduction" class="prose-section">
         <h3 class="section-title"><span class="section-num">1</span> Introduction <span class="section-title-en">引言</span></h3>
         <p>
-          端到端自动驾驶（E2E AD）正从基于模块化的感知-决策管线向统一人工智能演进。然而，现有范式存在三大致命缺陷：
+          端到端自动驾驶（E2E AD）正从模块化的感知-决策管线向统一架构演进。当前范式存在以下几个突出问题：
         </p>
         <div class="mt-5 grid sm:grid-cols-3 gap-3 font-sans text-sm not-prose">
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">① 几何标定依赖</div>
-            <p class="text-ink-600 leading-relaxed">主流模型高度依赖精准的相机内外参以构建视锥与 BEV，这在跨车型、跨传感器布局部署时带来灾难性的泛化难题。</p>
+            <p class="text-ink-600 leading-relaxed">主流模型高度依赖精准的相机内外参以构建视锥与 BEV，这在跨车型、跨传感器布局部署时带来明显的工程适配负担。</p>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">② 多模态未来坍缩</div>
-            <p class="text-ink-600 leading-relaxed">人类驾驶面临多分支的未来可能（变道、跟车、急刹），但真实数据往往仅含单一确定性操作，导致模型陷入 Mode Collapse。</p>
+            <p class="text-ink-600 leading-relaxed">人类驾驶面临多分支的未来可能（变道、跟车、急刹），但真实数据往往仅含单一确定性操作，模型容易陷入 Mode Collapse。</p>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">③ 算力 / 可解释缺失</div>
-            <p class="text-ink-600 leading-relaxed">引入 VLM/LLM 虽带来丰富思维链，但庞大参数量与逐 Token 自回归解码的时延使纯车端部署遥不可及。</p>
+            <p class="text-ink-600 leading-relaxed">引入 VLM/LLM 虽带来丰富思维链，但庞大参数量与逐 Token 自回归解码的时延使纯车端部署成本较高。</p>
           </div>
         </div>
         <p class="mt-6">
-          为此，我们提出了统一且干净的 O-JEPA 架构。受大脑层级预测编码机制 (Hierarchical Predictive Coding) 与隐式神经场 (NeRF) 思想启发，
-          O-JEPA 实现了一种<strong>低成本、强解释、高动态容量</strong>的全新基座。
+          针对上述问题，我们设计了 O-JEPA 架构。受大脑层级预测编码机制 (Hierarchical Predictive Coding) 与隐式神经场 (NeRF) 思想启发，
+          O-JEPA 试图探索一种<strong>低成本、可解释、动态容量友好</strong>的基座方案。
         </p>
       </section>
 
@@ -338,39 +342,40 @@
           <li><strong>深层视觉先验</strong>：以 <strong>DINOv3</strong> 强自监督表征模型作为视觉骨干，提取高维语义特征 $\mathcal{F}_{img}$。骨干随主干<strong>端到端参与训练</strong>以适配驾驶域分布，无需借助任何手工的 2D 检测/分割监督。</li>
           <li><strong>3D RoPE 射线位置编码</strong>：为图像平面的每个像素定义基于自车坐标系的射线方向向量，并通过 3D 旋转位置编码（3D RoPE）将射线几何信息注入图像 Token。</li>
           <li><strong>全注意力投影</strong>：初始化一定规模的可学习 BEV Tokens $\mathcal{T}_{bev}$（位置编码定义为可学习的隐式向量）。以 $\mathcal{T}_{bev}$ 为 Query，带射线方向信息的 $\mathcal{F}_{img}$ 为 Key/Value，模型通过交叉注意力<strong>自主学习 2D→3D 的空间对应关系</strong>——全过程<strong>不引入任何手工设计的视锥/几何投影</strong>（如 LSS、IPM、depth-lift），相机内外参仅在生成 3D RoPE 射线方向时一次性使用。</li>
-          <li><strong>LiDAR 密集射线采样蒸馏（仅训练期 Teacher）</strong>：在训练阶段沿 LiDAR 射线密集采样，利用网络预测三维空间特征 $\mathcal{F}_{3D}$，引入特征一致性约束，使 $\mathcal{F}_{3D}$ 逆投影后必须与图像特征强对齐。这迫使隐空间在<strong>无任何手工投影管线</strong>的前提下，自发构建出具几何与语义一致性的连续三维表征。</li>
+          <li><strong>LiDAR 密集射线采样蒸馏（仅训练期 Teacher）</strong>：在训练阶段沿 LiDAR 射线密集采样，利用网络预测三维空间特征 $\mathcal{F}_{3D}$，引入特征一致性约束，使 $\mathcal{F}_{3D}$ 逆投影后与图像特征对齐。<strong>期望</strong>这一约束能引导隐空间在无手工投影管线的前提下，构建出具备几何与语义一致性的连续三维表征。</li>
         </ul>
         <p class="mt-4 text-[15px] text-ink-500 italic border-l-2 border-accent-dark/30 pl-4">
           <strong class="text-ink-700 not-italic">关于"免标定 / Calibration-Free"的澄清</strong>：本文使用该术语
           特指<strong class="not-italic">摒弃 LSS / IPM 等手工设计的视锥投影几何</strong>，而非"完全不需要相机内外参"。
           内外参依然用于一次性计算每个像素的 3D 射线方向（生成 3D RoPE 编码），但<strong class="not-italic">不再参与
-          任何手工几何变换</strong>——所有 2D→3D 的空间对应关系完全交由交叉注意力自学。这也正是 O-JEPA 跨车型 /
-          跨传感器布局可大幅降低适配成本的根本原因。
+          任何手工几何变换</strong>——所有 2D→3D 的空间对应关系完全交由交叉注意力自学。RoPE 本身不含可学习参数，配合<strong class="not-italic">多组内外参的训练增强</strong>，
+          目标是降低跨车型 / 跨传感器布局的适配工程成本；但实车场景下的外参漂移、传感器位置大幅变更等仍可能需要额外的在线校正或重训手段。
         </p>
 
         <!-- 2.2 -->
         <h4 id="method-sequence" class="subsection-title">2.2 序列组装与状态三重注入 <span class="subsection-title-en">Sequence Assembly & Triple-Injection</span></h4>
-        <p>进入认知引擎的输入序列经过精心设计，由三大类表征构成：</p>
+        <p>进入认知引擎的输入序列由三类表征构成：</p>
         <ol class="numbered">
-          <li><strong>世界环境 Token</strong>：上述的 $\mathcal{T}_{bev}$，负责压缩并承载多帧时空的历史隐式特征。</li>
-          <li><strong>Visual CoT 语义槽</strong>：引入多个可学习 Prompt Tokens，细粒度地锚定不同的思维维度（例如：<code>[场景]</code>、<code>[交规]</code>、<code>[潜在危险]</code>、<code>[下一步推演]</code>、<code>[本车决策]</code>、<code>[决策后果]</code>）。</li>
+          <li><strong>世界环境 Token</strong>：上述的 $\mathcal{T}_{bev}$，承载多帧时空的历史隐式特征。</li>
+          <li><strong>Visual CoT 语义槽</strong>：引入若干可学习 Prompt Tokens，用于锚定不同的思维维度（例如 <code>[场景]</code>、<code>[交规]</code>、<code>[潜在危险]</code>、<code>[下一步推演]</code>、<code>[本车决策]</code>、<code>[决策后果]</code>）。槽的数量与语义维度为人为先验设计，可视任务场景调整；实际训练中部分槽可能退化或承担相近功能。</li>
           <li>
-            <strong>状态三重注入</strong>：对于导航指令、自车运动学状态和目标点信息 $S_{state}$，为防止高维视觉 Token 将其淹没，设计了强化的 Triple-Injection：
+            <strong>状态三重注入</strong>：对于导航指令、自车运动学状态和目标点信息 $S_{state}$，<strong>前期微小实验观察到</strong>单一注入路径下状态信号易被高维 BEV / CoT Token 淹没，因此采用三路并行注入：
             <ul class="bullets mt-2">
               <li><strong>独立 Token 注入</strong>：作为显式上下文 Token 拼接于序列。</li>
-              <li><strong>特征强行拼接</strong>：在通道维度将状态表征与 BEV Token Concatenate（结合降维以维持主干维度不变）。</li>
+              <li><strong>特征通道拼接</strong>：在通道维度将状态表征与 BEV Token Concatenate（结合降维以维持主干维度不变）。</li>
               <li><strong>AdaLN 调制</strong>：由状态特征生成全局仿射 $\gamma, \beta$，在 LayerNorm 阶段执行全局调制。</li>
             </ul>
           </li>
         </ol>
+        <p class="mt-3 text-[14px] text-ink-500">三路注入的具体边际收益（哪些可裁剪、哪些不可替代）有待系统性消融实验确认。</p>
 
         <!-- 2.3 -->
         <h4 id="method-ohrm" class="subsection-title">2.3 振荡分层表征网络 <span class="subsection-title-en">Oscillating HRM Engine</span></h4>
-        <p>传统时空网络通过不断堆叠串行的 Transformer 层来获取深层感受野，导致参数量线性膨胀。O-JEPA 提出采用极其精简的核心网络构建高频与低频耦合的双周期振荡网络（O-HRM）。</p>
+        <p>传统时空网络通过堆叠串行的 Transformer 层来获取深层感受野，参数量随之线性膨胀。O-JEPA 采用一种结构精简的核心网络，以期通过迭代展开取得等效深度——构建高频与低频耦合的双周期振荡网络（O-HRM）：</p>
         <ul class="bullets">
-          <li><strong>双重周期机制</strong>：模型在时间与逻辑轴上被划分为多个<strong>高层周期（宏观语义/低频）</strong>，每个高层周期内部嵌套多个<strong>低层周期（微观状态推演/高频）</strong>。</li>
-          <li><strong>权重共享 + AdaLN 身份识别</strong>：所有周期的前向计算均由<strong>同一个共享权重的网络模块</strong>执行；由“高层步数 / 低层步数 / 层级类型”生成嵌入向量，通过 AdaLN 注入网络，使模型在“宏观战略深思”与“微观战术推演”间振荡切换。</li>
-          <li><strong>双向交互与全序列感知</strong>：高层（抽象策略 / 宏观语义）与低层（时空流转 / 未来环境演变）均直接处理全局序列；高低层交替之际通过双向交叉注意力（Bi-CA）同步特征，实现宏观认知与微观感知的完美闭环。</li>
+          <li><strong>双重周期机制</strong>：模型在时间与逻辑轴上划分为多个<strong>高层周期（宏观语义/低频）</strong>，每个高层周期内部嵌套多个<strong>低层周期（微观状态推演/高频）</strong>。</li>
+          <li><strong>权重共享 + AdaLN 身份识别</strong>：所有周期的前向计算均由<strong>同一个共享权重的网络模块</strong>执行；由"高层步数 / 低层步数 / 层级类型"生成嵌入向量，通过 AdaLN 注入网络（参考 DiT 的 adaLN-Zero 思路），期望模型据此在宏观与微观推演间切换。</li>
+          <li><strong>双向交互与全序列感知</strong>：高层（抽象策略 / 宏观语义）与低层（时空流转 / 未来环境演变）均直接处理全局序列；高低层交替之际通过双向交叉注意力（Bi-CA）同步特征，构成宏观认知与微观感知的双向闭环。</li>
         </ul>
         <p class="mt-4 text-[15px] text-ink-500 italic border-l-2 border-accent-dark/30 pl-4">
           <strong class="text-ink-700 not-italic">关于"自回归"的澄清</strong>：O-HRM 的振荡迭代会反复读入自身上一周期的隐状态，
@@ -378,6 +383,13 @@
           autoregression）——但其步数预先确定、所有迭代共享同一组参数、且<strong class="not-italic">不向外输出任何 Token</strong>，
           因此与 GPT 类逐 Token、变长度、串行解码的语言自回归在<strong class="not-italic">复杂度、可并行性与端侧延迟</strong>上有本质差异。
           全文中的"非自回归 / Token-AR Free"措辞均指<strong class="not-italic">输出层不进行逐 Token 解码</strong>。
+        </p>
+
+        <p class="mt-4 text-[15px] text-ink-700 border-l-2 border-warm pl-4 bg-warm-soft/40 py-3 pr-4 rounded-r-md">
+          <strong class="text-warm">关于震荡模块容量的硬约束（重要）</strong>：由于共享权重模块需要在前向中被反复展开（设总展开步数为 $T = T_{high}\times T_{low}$），其单步 FLOPs 与参数量会<strong>线性放大 $T$ 倍</strong>进入端侧延迟。
+          因此该模块<strong>必须保持小规模</strong>（例如：层数 $\lesssim 4$、hidden dim 与骨干同阶或更小），靠 $T$ 而非靠堆参数获取等效深度——这是 O-HRM 全部"参数效率"叙事的<strong>前提条件</strong>。
+          如把震荡模块做大，端侧延迟会被 $T$ 倍放大、彻底偏离单卡 / 实时部署目标。
+          具体 $T$ 取值与单步容量的折衷方案（例如 $T \approx 4 \times 2 = 8$、模块 $\approx$ 2–4 层小 Transformer）需在实验中确定。
         </p>
 
         <!-- O-HRM oscillation viz -->
@@ -430,19 +442,36 @@
 
         <!-- 2.4 -->
         <h4 id="method-wta" class="subsection-title">2.4 末端分化与 WTA 多概率预测 <span class="subsection-title-en">Terminal Branching & Winner-Takes-All</span></h4>
-        <p>在 O-HRM 完成主干特征提取后，为了在人类给定的单一直觉驾驶数据（确定性真值）中逼迫模型涌现“多模态概率思考”，引入末端分化策略。</p>
+        <p>在 O-HRM 完成主干特征提取后，为了从单一确定性的人类驾驶数据中诱导模型展现"多模态概率思考"的能力，引入末端分化策略。</p>
+
+        <p class="mt-3 text-[15px] text-ink-500 italic border-l-2 border-warm/40 pl-4">
+          <strong class="text-ink-700 not-italic">与 MoE 的结构类比</strong>：本节描述的机制可视为 MoE (Mixture of Experts) 的一个变体——
+          $K$ 个 Head 对应 Experts，每个 Head 自带的 confidence 回归子模块对应 Gating Network，WTA 对应 Top-1 Routing，
+          最大熵正则对应 MoE 中的 load-balancing loss。该类比为 WTA 的"模式涌现"提供了来自 MoE 文献（Switch Transformer / GLaM 等）的 inductive bias 支持。
+          两者方向差异：MoE 通常按输入语义聚类做 input-conditional routing，而 WTA 在此被用于诱导对同一输入的多种可能输出（output-multimodal）。
+        </p>
+
         <ul class="bullets">
           <li><strong>并行分支头</strong>：主干网络末端分裂出 $K$ 个独立轻量级 Head；每个 Head 并行输出未来多帧的隐状态预测序列 $\hat{\mathcal{S}}_k$ 与对应语义预测 Token $\hat{\mathcal{C}}_k$，并各自附带一个轻量回归子模块输出该 Head 自身的置信度 $p_k$，组合成先验分布 $P=[p_1,\dots,p_K]$。<strong>$P$ 由 NLL 损失独立监督学习</strong>（见 §3），代表"该 Head 在当前场景下应被信任的程度"。</li>
           <li>
-            <strong>WTA 梯度截断</strong>：动态寻找距离真值隐状态最近的“胜出”分支 $k^{*}$（Winner）。
+            <strong>WTA 梯度截断</strong>：动态寻找距离真值隐状态最近的"胜出"分支 $k^{*}$（Winner）。
             <ul class="bullets mt-2">
               <li>反向传播时，<strong>仅允许</strong> $k^*$ 分支回传环境与语义预测梯度。</li>
               <li>对其余未胜出分支，截断其预测特征方向的梯度传播。</li>
             </ul>
           </li>
-          <li><strong>NLL 与不确定性建模</strong>：使用负对数似然损失惩罚未胜出分支的先验置信度分布。</li>
-          <li><strong>防止模式坍缩</strong>：引入最大熵正则化 $\mathcal{L}_{Ent}=\sum p_k\log p_k$，强制各 Head 维持均等探索概率，促使其自发涌现出截然不同的未来世界线（专职变道、跟车或避让等 Head）。</li>
+          <li><strong>NLL 与不确定性建模</strong>：使用负对数似然损失监督先验置信度分布的预测。</li>
+          <li><strong>防止模式坍缩</strong>：引入最大熵正则化 $\mathcal{L}_{Ent}=\sum p_k\log p_k$，鼓励各 Head 在全局训练分布上保持均等的探索概率；<strong>期望</strong>不同 Head 在统计上分化为不同的预测模式（如倾向变道、跟车、避让等场景特化）。</li>
         </ul>
+
+        <p class="mt-4 text-[15px] text-ink-500 italic border-l-2 border-accent-dark/30 pl-4">
+          <strong class="text-ink-700 not-italic">关于"涌现"的限制说明</strong>：最大熵正则化只能约束 $P$ 分布的均匀性，
+          <strong class="not-italic">并不直接保证</strong> $\hat{\mathcal{S}}_k$ 之间在特征空间上的差异。
+          如训练中观察到 head 间的特征坍缩（$K$ 个 head 输出近似相同的预测），可补充以下机制之一：
+          显式 diversity loss $\mathcal{L}_{div}=\sum_{i\neq j}\cos(\hat{\mathcal{S}}_i,\hat{\mathcal{S}}_j)$；
+          MoE 风格的 noisy top-K gating（缓解早期 routing 锁死）；
+          或 anchor-conditioned head（每个 head 绑一个 mode prior）。
+        </p>
 
         <!-- 2.5 -->
         <h4 id="method-decoder" class="subsection-title">2.5 自适应动作解码器 <span class="subsection-title-en">Adaptive Action Decoder</span></h4>
@@ -450,7 +479,7 @@
           <li>
             <strong>置信度调制的交叉注意力</strong>：Decoder 以可学习查询向量为 Query，将 $K$ 个 Head 的预测特征 $\{\hat{\mathcal{S}}_k, \hat{\mathcal{C}}_k\}$ 拼接为 Key / Value。先验置信度 $P$ <strong>不直接对预测特征做加权求和</strong>，而是作为偏置项<strong>调制注意力分数</strong>——形式上即
             $$ \mathrm{Attn}(Q,K,V) = \mathrm{softmax}\!\left(\tfrac{QK^{\top}}{\sqrt{d}} + \log P\right)V $$
-            （或等价的乘性调制）。这样可信的 Head 自然主导特征抓取，可疑的 Head 被注意力机制天然抑制，而 Q 仍保留在不同 Head 之间做内容相关取舍的能力。
+            （或等价的乘性调制）。期望可信的 Head 在调制后的注意力分布中获得更高权重，而 Q 仍保留跨 Head 做内容相关取舍的能力。
           </li>
           <li><strong>直接回归</strong>：基于聚合后的统一特征，直接确定性输出短期轨迹规划点与底盘级控制指令（转向、油门、刹车）。</li>
         </ul>
@@ -480,7 +509,7 @@
         </div>
 
         <h4 class="subsection-title mt-10">Phase 2: 语义蒸馏与控制对齐 <span class="subsection-title-en">SFT</span></h4>
-        <p>无需在车端实时运行高耗能的语言模型。利用云端大语言/多模态模型离线生成驾驶思维链，并通过文本嵌入模型提取为固定维度的真实语义向量 $E_{cot}$。</p>
+        <p>车端推理无需运行语言模型——利用云端大语言/多模态模型<strong>离线</strong>生成驾驶思维链，并通过文本嵌入模型提取为固定维度的语义向量 $E_{cot}$ 作为蒸馏目标。Sentence embedding 的有损压缩特性可一定程度上抹平 LLM 的 fine-grained 幻觉，但 systematic bias 仍可能被保留；如对蒸馏标签质量敏感，建议采用多 LLM 投票或 embedding 一致性过滤。</p>
 
         <div class="loss-card">
           <div class="loss-tag">语义思维链蒸馏 · Visual CoT Alignment</div>
@@ -497,39 +526,47 @@
 
       <!-- 4. Efficiency -->
       <section id="efficiency" class="prose-section">
-        <h3 class="section-title"><span class="section-num">4</span> Efficiency Analysis <span class="section-title-en">架构极度轻量化分析</span></h3>
-        <p>O-JEPA 严格遵循极致工程轻量化原则，其单卡可训的底层逻辑在于巧妙的架构设计而非暴力算力堆叠：</p>
+        <h3 class="section-title"><span class="section-num">4</span> Efficiency Analysis <span class="section-title-en">架构轻量化分析</span></h3>
+        <p>O-JEPA 在多处设计选择上偏好轻量化路径。其在小骨干配置下具备单卡可训的可行性，主要源自下列架构性质而非依赖大规模算力堆叠（具体显存 / 延迟 / 参数量数字以实测为准）：</p>
 
         <div class="not-prose mt-6 grid sm:grid-cols-2 gap-3 font-sans text-sm">
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">① 强视觉先验 + 端到端可训</div>
-            <p class="text-ink-600 leading-relaxed">以 DINOv3 强自监督表征为骨干，提供丰富的语义先验；骨干随主干一起端到端训练以适配驾驶域分布，无需任何手工 2D 监督。</p>
+            <p class="text-ink-600 leading-relaxed">以 DINOv3 强自监督表征为骨干，提供丰富的语义先验；骨干随主干一起端到端训练以适配驾驶域分布，无需手工 2D 监督。骨干 size（DINOv3-S/B/L/H）可视算力预算选择，必要时结合 LoRA、shallow fine-tune 或 layer-wise unfreeze 控制开销。</p>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">② 空间转换的低代价</div>
-            <p class="text-ink-600 leading-relaxed">无手工投影的交叉注意力 BEV 编码器仅依赖单层注意力即可完成 2D→隐式 3D 聚合，避免高耗能 3D 卷积，亦省去 LSS 类管线的工程负担。</p>
+            <p class="text-ink-600 leading-relaxed">无手工投影的交叉注意力 BEV 编码器以单层注意力完成 2D→隐式 3D 聚合，避免高耗能 3D 卷积，亦省去 LSS 类管线的工程负担。</p>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
-            <div class="text-accent-dark font-semibold mb-1">③ 认知引擎的极致复用</div>
-            <p class="text-ink-600 leading-relaxed">O-HRM 振荡网络完全共享权重，时间步上展开多次循环达到极深推理深度，物理参数量仅相当于极少数层的标准 Transformer——<strong>以时间复杂度换取空间复杂度</strong>。</p>
+            <div class="text-accent-dark font-semibold mb-1">③ 认知引擎的参数复用</div>
+            <p class="text-ink-600 leading-relaxed">O-HRM 振荡网络共享权重，在时间步上展开多次循环以取得较深的等效推理深度，物理参数量仅相当于少数层的标准 Transformer——<strong>以时间复杂度换取空间复杂度</strong>。<strong class="text-warm">关键前提</strong>：震荡模块自身<strong>必须保持小规模</strong>（例如 $\lesssim 4$ 层小 Transformer），否则总延迟 ≈ 单步延迟 × 展开步数 $T$ 会被同比放大——若把震荡模块做大，"参数效率"叙事将立刻失效，端侧延迟也会迅速失控。注：迭代展开同样会带来反向传播激活内存增长，必要时可借助 gradient checkpointing 缓解。</p>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">④ 无重型解码器</div>
-            <p class="text-ink-600 leading-relaxed">全程不进行图像级高分辨率像素重建（摒弃 Diffusion / GAN），亦不进行逐词自回归生成，激活内存与反向计算图被压缩到极致。</p>
+            <p class="text-ink-600 leading-relaxed">全程不做图像级高分辨率像素重建（摒弃 Diffusion / GAN），亦不做逐 Token 自回归生成，激活内存与反向计算图相对生成式管线显著缩减。</p>
           </div>
         </div>
 
-        <p class="mt-6">这些极简且纯粹的设计，使得整个模型的主体可训练参数被控制在极为轻量级的范畴。研究者能够轻易地在普通单张消费级显卡上，采用可观的 Batch-Size 运行并行训练；而在车端推理时，纯隐空间的矩阵乘法能够将系统延迟（Latency）压缩至极低水位。</p>
+        <p class="mt-6">在采用小型骨干（如 DINOv3-S/B）时，模型的主体可训练参数有望保持在轻量级范围；目标是在单张消费级显卡上以中等 Batch-Size 完成训练。具体可达成的 Batch-Size 与车端推理延迟取决于骨干 size、O-HRM 展开步数、BEV Token 数量与硬件平台，<strong>待后续实验测定</strong>。</p>
       </section>
 
       <!-- 5. Conclusion -->
       <section id="conclusion" class="prose-section">
         <h3 class="section-title"><span class="section-num">5</span> Conclusion <span class="section-title-en">结论</span></h3>
         <p>
-          O-JEPA 重新定义了端到端自动驾驶的基础范式。通过<strong>无手工投影的隐空间神经场</strong>（仅以内外参生成 3D RoPE 射线方向，由交叉注意力自学几何对应）大幅降低了跨车型 / 跨传感器布局的适配成本；
-          通过<strong>共享振荡网络（O-HRM）</strong>以极低的参数代价实现了深不可测的时空表征能力；
-          通过<strong>WTA 多概率分支</strong>以单次前向、无逐 Token 解码的极低成本涌现出大模型才具备的“思维链与推演”能力。
-          O-JEPA 严格遵守了严苛的算力与显存约束，展现了作为下一代兼具高智能与高解释性的量产级自动驾驶基座的巨大潜力。
+          O-JEPA 在端到端自动驾驶的设计空间中尝试了一条新路径：通过<strong>无手工投影的隐空间神经场</strong>（仅以内外参生成 3D RoPE 射线方向，由交叉注意力自学几何对应）<strong>目标</strong>是降低跨车型 / 跨传感器布局的工程适配成本；
+          通过<strong>共享权重的 O-HRM 振荡网络</strong>以较低的参数预算获得较深的等效时空表征容量；
+          通过<strong>WTA 多概率分支</strong>尝试以单次前向、无逐 Token 解码的方式逼近大模型的"思维链与推演"能力。
+        </p>
+        <p class="mt-4">
+          O-JEPA 在算力与显存约束下进行了多处工程妥协；其作为兼具效率与可解释性的端到端基座的实际效果，
+          <strong>取决于后续在定量指标、消融实验与闭环评估上的系统性验证</strong>。
+          本页定位为基础设计原型，下一步工作包括：
+          (1) 给出关键超参（$K$、O-HRM 周期数、骨干 size）的具体配置；
+          (2) 在 NuScenes / nuPlan / CARLA 等数据集上完成定量基准与消融研究；
+          (3) WTA 涌现性的早期可证伪实验（监控 $K$ 个 Head 的特征 cosine 距离）；
+          (4) 闭环驾驶评估。
         </p>
       </section>
 
