@@ -125,8 +125,8 @@
             <div class="mt-1 text-ink-900 font-semibold">Single-GPU</div>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white px-4 py-3">
-            <div class="text-ink-400 text-xs uppercase tracking-wider">非自回归</div>
-            <div class="mt-1 text-ink-900 font-semibold">Non-AR Cot</div>
+            <div class="text-ink-400 text-xs uppercase tracking-wider">无 Token 解码</div>
+            <div class="mt-1 text-ink-900 font-semibold">Token-AR Free</div>
           </div>
         </div>
       </section>
@@ -135,7 +135,7 @@
       <section id="abstract" class="prose-section">
         <h3 class="section-title">Abstract <span class="section-title-en">摘要</span></h3>
         <p>
-          当前端到端自动驾驶模型深陷于繁重的显式几何转换（如 LSS）、高昂的自回归计算（如 LLM）以及极端的算力依赖中。
+          当前端到端自动驾驶模型深陷于繁重的显式几何转换（如 LSS）、高昂的逐 Token 自回归解码（如 LLM）以及极端的算力依赖中。
           为打破这一僵局，本文提出了一种具有极简架构与深层认知能力的顶尖端到端模型——
           <strong>O-JEPA (Oscillating-JEPA)</strong>。本模型抛弃了所有手工几何标定与像素级生成，全程在紧凑的隐空间内运行，
           具有极佳的参数效率，可在单张普通消费级显卡上完成全流程训练。
@@ -144,7 +144,7 @@
         <ol class="mt-2 space-y-2 list-decimal pl-6 marker:text-accent-dark/70 marker:font-semibold">
           <li><strong>免标定隐式 3D-BEV</strong>：利用 3D RoPE 与交叉注意力直接聚合纯视觉特征，并在训练期通过密集射线采样与特征一致性引入 LiDAR 知识。</li>
           <li><strong>振荡分层表征模型 (O-HRM)</strong>：采用共享权重的时空双频周期振荡网络，实现高层语义与低层世界状态的跨尺度耦合。</li>
-          <li><strong>非自回归思维链与末端分化 (WTA-Branching)</strong>：引入若干高度概括的语义 Token 并在网络末端分化出多个并行预测头，利用 Winner-Takes-All (WTA) 与最大熵正则化，在仅有确定性监督数据的场景下自发涌现出多模态的未来预测能力。</li>
+          <li><strong>并行涌现式思维链与末端分化 (WTA-Branching)</strong>：引入若干高度概括的语义 Token 并在网络末端分化出多个并行预测头，利用 Winner-Takes-All (WTA) 与最大熵正则化，在仅有确定性监督数据的场景下自发涌现出多模态的未来预测能力——整个思维链在一次前向中并行产出，无需任何逐 Token 文本解码。</li>
         </ol>
       </section>
 
@@ -165,7 +165,7 @@
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">③ 算力 / 可解释缺失</div>
-            <p class="text-ink-600 leading-relaxed">引入 VLM/LLM 虽带来丰富思维链，但庞大参数量与自回归时延使纯车端部署遥不可及。</p>
+            <p class="text-ink-600 leading-relaxed">引入 VLM/LLM 虽带来丰富思维链，但庞大参数量与逐 Token 自回归解码的时延使纯车端部署遥不可及。</p>
           </div>
         </div>
         <p class="mt-6">
@@ -178,7 +178,10 @@
       <section id="methodology" class="prose-section">
         <h3 class="section-title"><span class="section-num">2</span> Methodology <span class="section-title-en">核心架构方法</span></h3>
         <p>
-          O-JEPA 摒弃了传统的解码器重建管线，整个模型被定义为一个非自回归的序列到序列（Seq2Seq）隐式映射过程。
+          O-JEPA 摒弃了传统的解码器重建管线，整个模型被定义为一个序列到序列（Seq2Seq）的隐空间映射过程：
+          O-HRM 引擎在固定步数内对隐状态做<strong>共享权重的自我迭代精化</strong>（fixed-step latent self-refinement，
+          可视为隐空间内的定步数自回归），而<strong>输出层不进行任何逐 Token 解码</strong>——
+          所有未来预测、轨迹与控制指令均由并行分支头在<strong>单次前向</strong>中一次性产出。
           全局特征被投影至轻量化友好的统一维度中。
         </p>
 
@@ -362,6 +365,13 @@
           <li><strong>权重共享 + AdaLN 身份识别</strong>：所有周期的前向计算均由<strong>同一个共享权重的网络模块</strong>执行；由“高层步数 / 低层步数 / 层级类型”生成嵌入向量，通过 AdaLN 注入网络，使模型在“宏观战略深思”与“微观战术推演”间振荡切换。</li>
           <li><strong>双向交互与全序列感知</strong>：高层（抽象策略 / 宏观语义）与低层（时空流转 / 未来环境演变）均直接处理全局序列；高低层交替之际通过双向交叉注意力（Bi-CA）同步特征，实现宏观认知与微观感知的完美闭环。</li>
         </ul>
+        <p class="mt-4 text-[15px] text-ink-500 italic border-l-2 border-accent-dark/30 pl-4">
+          <strong class="text-ink-700 not-italic">关于"自回归"的澄清</strong>：O-HRM 的振荡迭代会反复读入自身上一周期的隐状态，
+          在严格定义上属于<strong class="not-italic">隐空间内的定步数自回归</strong>（latent fixed-step
+          autoregression）——但其步数预先确定、所有迭代共享同一组参数、且<strong class="not-italic">不向外输出任何 Token</strong>，
+          因此与 GPT 类逐 Token、变长度、串行解码的语言自回归在<strong class="not-italic">复杂度、可并行性与端侧延迟</strong>上有本质差异。
+          全文中的"非自回归 / Token-AR Free"措辞均指<strong class="not-italic">输出层不进行逐 Token 解码</strong>。
+        </p>
 
         <!-- O-HRM oscillation viz -->
         <figure class="not-prose my-8">
@@ -507,7 +517,7 @@
         <p>
           O-JEPA 重新定义了端到端自动驾驶的基础范式。通过<strong>免标定隐空间神经场</strong>破解了跨车型泛化难题；
           通过<strong>共享振荡网络（O-HRM）</strong>以极低的参数代价实现了深不可测的时空表征能力；
-          通过<strong>WTA 多概率分支</strong>以非自回归的极低成本涌现出大模型才具备的“思维链与推演”能力。
+          通过<strong>WTA 多概率分支</strong>以单次前向、无逐 Token 解码的极低成本涌现出大模型才具备的“思维链与推演”能力。
           O-JEPA 严格遵守了严苛的算力与显存约束，展现了作为下一代兼具高智能与高解释性的量产级自动驾驶基座的巨大潜力。
         </p>
       </section>
