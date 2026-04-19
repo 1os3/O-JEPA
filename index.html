@@ -113,8 +113,8 @@
         <!-- Highlight strip -->
         <div class="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 font-sans text-[13px]">
           <div class="rounded-lg border border-ink-700/10 bg-white px-4 py-3">
-            <div class="text-ink-400 text-xs uppercase tracking-wider">免标定</div>
-            <div class="mt-1 text-ink-900 font-semibold">Calibration-Free</div>
+            <div class="text-ink-400 text-xs uppercase tracking-wider">无手工投影</div>
+            <div class="mt-1 text-ink-900 font-semibold">Projection-Free</div>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white px-4 py-3">
             <div class="text-ink-400 text-xs uppercase tracking-wider">隐空间</div>
@@ -142,7 +142,7 @@
         </p>
         <p class="mt-4">核心创新包括：</p>
         <ol class="mt-2 space-y-2 list-decimal pl-6 marker:text-accent-dark/70 marker:font-semibold">
-          <li><strong>免标定隐式 3D-BEV</strong>：利用 3D RoPE 与交叉注意力直接聚合纯视觉特征，并在训练期通过密集射线采样与特征一致性引入 LiDAR 知识。</li>
+          <li><strong>无手工投影的隐式 3D-BEV</strong>：摒弃 LSS / IPM 等手工设计的视锥投影管线——相机内外参仅一次性用于计算每个像素的射线方向，由 3D RoPE 注入图像 Token，再经交叉注意力让模型自主学习 2D→3D 的隐式空间对应；训练期通过 LiDAR 密集射线采样与特征一致性蒸馏几何先验。</li>
           <li><strong>振荡分层表征模型 (O-HRM)</strong>：采用共享权重的时空双频周期振荡网络，实现高层语义与低层世界状态的跨尺度耦合。</li>
           <li><strong>并行涌现式思维链与末端分化 (WTA-Branching)</strong>：引入若干高度概括的语义 Token 并在网络末端分化出多个并行预测头，利用 Winner-Takes-All (WTA) 与最大熵正则化，在仅有确定性监督数据的场景下自发涌现出多模态的未来预测能力——整个思维链在一次前向中并行产出，无需任何逐 Token 文本解码。</li>
         </ol>
@@ -203,9 +203,9 @@
                 </div>
                 <div class="arch-arrow">→</div>
                 <div class="arch-card flex-1 from-slate-50 to-slate-100/40">
-                  <div class="arch-tag">Backbone · frozen</div>
-                  <div class="arch-title">DINO-ViT</div>
-                  <div class="arch-sub">高维语义特征 𝓕<sub>img</sub></div>
+                  <div class="arch-tag">Backbone</div>
+                  <div class="arch-title">DINOv3</div>
+                  <div class="arch-sub">端到端参与训练 · 𝓕<sub>img</sub></div>
                 </div>
                 <div class="arch-arrow">→</div>
                 <div class="arch-card flex-1 from-indigo-50 to-indigo-100/40">
@@ -217,7 +217,7 @@
                 <div class="arch-card flex-1 from-blue-50 to-blue-100/40">
                   <div class="arch-tag">Spatial</div>
                   <div class="arch-title">Cross-Attn BEV Tokens</div>
-                  <div class="arch-sub">𝒯<sub>bev</sub> · 无内外参</div>
+                  <div class="arch-sub">𝒯<sub>bev</sub> · 无手工投影</div>
                 </div>
               </div>
 
@@ -315,7 +315,7 @@
                 <div class="arch-card flex-[1.5] from-violet-50 to-violet-100/40">
                   <div class="arch-tag">Decoder</div>
                   <div class="arch-title">Adaptive Action Decoder</div>
-                  <div class="arch-sub">Cross-Attn · 软加权聚合 (P)</div>
+                  <div class="arch-sub">Cross-Attn · 注意力分数被 P 调制</div>
                 </div>
                 <div class="arch-arrow">→</div>
                 <div class="arch-card flex-1 from-ink-700/5 to-ink-700/10">
@@ -327,7 +327,7 @@
             </div>
           </div>
           <figcaption class="mt-3 text-center text-sm text-ink-500 font-sans">
-            <strong class="text-ink-700">Figure 1.</strong> O-JEPA 端到端隐空间架构总览。冻结视觉骨干 → 免标定 BEV → 序列组装 → O-HRM 振荡引擎 → WTA 多分支 → 动作解码。
+            <strong class="text-ink-700">Figure 1.</strong> O-JEPA 端到端隐空间架构总览。DINOv3 视觉骨干 → 无手工投影的隐式 BEV → 序列组装 → O-HRM 振荡引擎 → WTA 多分支 → 动作解码（P 调制注意力分数）。
           </figcaption>
         </figure>
 
@@ -335,11 +335,18 @@
         <h4 id="method-bev" class="subsection-title">2.1 视觉编码与免标定隐式 BEV 场 <span class="subsection-title-en">Calibration-Free Implicit BEV</span></h4>
         <p>传统的基于 LSS 等方法的 BEV 构建需要显式的视锥投影和几何运算。我们提出一种纯注意力机制的连续三维表征空间构建方法：</p>
         <ul class="bullets">
-          <li><strong>深层视觉先验</strong>：复用冻结的预训练强视觉特征抽取模型（如 DINO-ViT 系列）作为视觉骨干，提取高维语义特征 $\mathcal{F}_{img}$。</li>
+          <li><strong>深层视觉先验</strong>：以 <strong>DINOv3</strong> 强自监督表征模型作为视觉骨干，提取高维语义特征 $\mathcal{F}_{img}$。骨干随主干<strong>端到端参与训练</strong>以适配驾驶域分布，无需借助任何手工的 2D 检测/分割监督。</li>
           <li><strong>3D RoPE 射线位置编码</strong>：为图像平面的每个像素定义基于自车坐标系的射线方向向量，并通过 3D 旋转位置编码（3D RoPE）将射线几何信息注入图像 Token。</li>
-          <li><strong>全注意力投影</strong>：初始化一定规模的可学习 BEV Tokens $\mathcal{T}_{bev}$（位置编码定义为可学习的隐式向量）。以 $\mathcal{T}_{bev}$ 为 Query，带射线方向信息的 $\mathcal{F}_{img}$ 为 Key/Value，模型通过交叉注意力自主学习空间对应关系，全过程<strong>无需任何显式内外参</strong>。</li>
-          <li><strong>LiDAR 密集射线采样蒸馏（仅训练期 Teacher）</strong>：在训练阶段沿 LiDAR 射线密集采样，利用网络预测三维空间特征 $\mathcal{F}_{3D}$，引入特征一致性约束，使 $\mathcal{F}_{3D}$ 逆投影后必须与图像特征强对齐。这迫使隐空间在没有标定的情况下自发构建出具几何与语义一致性的连续三维表征。</li>
+          <li><strong>全注意力投影</strong>：初始化一定规模的可学习 BEV Tokens $\mathcal{T}_{bev}$（位置编码定义为可学习的隐式向量）。以 $\mathcal{T}_{bev}$ 为 Query，带射线方向信息的 $\mathcal{F}_{img}$ 为 Key/Value，模型通过交叉注意力<strong>自主学习 2D→3D 的空间对应关系</strong>——全过程<strong>不引入任何手工设计的视锥/几何投影</strong>（如 LSS、IPM、depth-lift），相机内外参仅在生成 3D RoPE 射线方向时一次性使用。</li>
+          <li><strong>LiDAR 密集射线采样蒸馏（仅训练期 Teacher）</strong>：在训练阶段沿 LiDAR 射线密集采样，利用网络预测三维空间特征 $\mathcal{F}_{3D}$，引入特征一致性约束，使 $\mathcal{F}_{3D}$ 逆投影后必须与图像特征强对齐。这迫使隐空间在<strong>无任何手工投影管线</strong>的前提下，自发构建出具几何与语义一致性的连续三维表征。</li>
         </ul>
+        <p class="mt-4 text-[15px] text-ink-500 italic border-l-2 border-accent-dark/30 pl-4">
+          <strong class="text-ink-700 not-italic">关于"免标定 / Calibration-Free"的澄清</strong>：本文使用该术语
+          特指<strong class="not-italic">摒弃 LSS / IPM 等手工设计的视锥投影几何</strong>，而非"完全不需要相机内外参"。
+          内外参依然用于一次性计算每个像素的 3D 射线方向（生成 3D RoPE 编码），但<strong class="not-italic">不再参与
+          任何手工几何变换</strong>——所有 2D→3D 的空间对应关系完全交由交叉注意力自学。这也正是 O-JEPA 跨车型 /
+          跨传感器布局可大幅降低适配成本的根本原因。
+        </p>
 
         <!-- 2.2 -->
         <h4 id="method-sequence" class="subsection-title">2.2 序列组装与状态三重注入 <span class="subsection-title-en">Sequence Assembly & Triple-Injection</span></h4>
@@ -425,7 +432,7 @@
         <h4 id="method-wta" class="subsection-title">2.4 末端分化与 WTA 多概率预测 <span class="subsection-title-en">Terminal Branching & Winner-Takes-All</span></h4>
         <p>在 O-HRM 完成主干特征提取后，为了在人类给定的单一直觉驾驶数据（确定性真值）中逼迫模型涌现“多模态概率思考”，引入末端分化策略。</p>
         <ul class="bullets">
-          <li><strong>并行分支头</strong>：主干网络末端分裂出 $K$ 个独立轻量级 Head；每个 Head 并行输出未来多帧的隐状态预测序列 $\hat{\mathcal{S}}_k$ 与对应语义预测 Token $\hat{\mathcal{C}}_k$，并输出该分支置信度先验分布 $P=[p_1,\dots,p_K]$。</li>
+          <li><strong>并行分支头</strong>：主干网络末端分裂出 $K$ 个独立轻量级 Head；每个 Head 并行输出未来多帧的隐状态预测序列 $\hat{\mathcal{S}}_k$ 与对应语义预测 Token $\hat{\mathcal{C}}_k$，并各自附带一个轻量回归子模块输出该 Head 自身的置信度 $p_k$，组合成先验分布 $P=[p_1,\dots,p_K]$。<strong>$P$ 由 NLL 损失独立监督学习</strong>（见 §3），代表"该 Head 在当前场景下应被信任的程度"。</li>
           <li>
             <strong>WTA 梯度截断</strong>：动态寻找距离真值隐状态最近的“胜出”分支 $k^{*}$（Winner）。
             <ul class="bullets mt-2">
@@ -440,7 +447,11 @@
         <!-- 2.5 -->
         <h4 id="method-decoder" class="subsection-title">2.5 自适应动作解码器 <span class="subsection-title-en">Adaptive Action Decoder</span></h4>
         <ul class="bullets">
-          <li><strong>置信度加权捕获</strong>：Decoder 的查询向量在聚合世界特征时，依据先验概率分布 $P$ 对所有 $K$ 个 Head 的预测特征进行软加权（Soft-weighting）。</li>
+          <li>
+            <strong>置信度调制的交叉注意力</strong>：Decoder 以可学习查询向量为 Query，将 $K$ 个 Head 的预测特征 $\{\hat{\mathcal{S}}_k, \hat{\mathcal{C}}_k\}$ 拼接为 Key / Value。先验置信度 $P$ <strong>不直接对预测特征做加权求和</strong>，而是作为偏置项<strong>调制注意力分数</strong>——形式上即
+            $$ \mathrm{Attn}(Q,K,V) = \mathrm{softmax}\!\left(\tfrac{QK^{\top}}{\sqrt{d}} + \log P\right)V $$
+            （或等价的乘性调制）。这样可信的 Head 自然主导特征抓取，可疑的 Head 被注意力机制天然抑制，而 Q 仍保留在不同 Head 之间做内容相关取舍的能力。
+          </li>
           <li><strong>直接回归</strong>：基于聚合后的统一特征，直接确定性输出短期轨迹规划点与底盘级控制指令（转向、油门、刹车）。</li>
         </ul>
       </section>
@@ -491,12 +502,12 @@
 
         <div class="not-prose mt-6 grid sm:grid-cols-2 gap-3 font-sans text-sm">
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
-            <div class="text-accent-dark font-semibold mb-1">① 特征抽取的零负担</div>
-            <p class="text-ink-600 leading-relaxed">复用并完全冻结强视觉骨干网络，训练阶段不产生任何主干网络的梯度显存开销。</p>
+            <div class="text-accent-dark font-semibold mb-1">① 强视觉先验 + 端到端可训</div>
+            <p class="text-ink-600 leading-relaxed">以 DINOv3 强自监督表征为骨干，提供丰富的语义先验；骨干随主干一起端到端训练以适配驾驶域分布，无需任何手工 2D 监督。</p>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">② 空间转换的低代价</div>
-            <p class="text-ink-600 leading-relaxed">免标定的交叉注意力 BEV 编码器仅依赖单层注意力即可完成 2D→隐式 3D 聚合，避免高耗能 3D 卷积。</p>
+            <p class="text-ink-600 leading-relaxed">无手工投影的交叉注意力 BEV 编码器仅依赖单层注意力即可完成 2D→隐式 3D 聚合，避免高耗能 3D 卷积，亦省去 LSS 类管线的工程负担。</p>
           </div>
           <div class="rounded-lg border border-ink-700/10 bg-white p-4">
             <div class="text-accent-dark font-semibold mb-1">③ 认知引擎的极致复用</div>
@@ -515,7 +526,7 @@
       <section id="conclusion" class="prose-section">
         <h3 class="section-title"><span class="section-num">5</span> Conclusion <span class="section-title-en">结论</span></h3>
         <p>
-          O-JEPA 重新定义了端到端自动驾驶的基础范式。通过<strong>免标定隐空间神经场</strong>破解了跨车型泛化难题；
+          O-JEPA 重新定义了端到端自动驾驶的基础范式。通过<strong>无手工投影的隐空间神经场</strong>（仅以内外参生成 3D RoPE 射线方向，由交叉注意力自学几何对应）大幅降低了跨车型 / 跨传感器布局的适配成本；
           通过<strong>共享振荡网络（O-HRM）</strong>以极低的参数代价实现了深不可测的时空表征能力；
           通过<strong>WTA 多概率分支</strong>以单次前向、无逐 Token 解码的极低成本涌现出大模型才具备的“思维链与推演”能力。
           O-JEPA 严格遵守了严苛的算力与显存约束，展现了作为下一代兼具高智能与高解释性的量产级自动驾驶基座的巨大潜力。
